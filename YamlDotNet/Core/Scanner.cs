@@ -1607,28 +1607,14 @@ namespace YamlDotNet.Core
             {
                 // We are at the beginning of a non-empty line.
 
-                // Is it a trailing whitespace?
+                // Check if we need to fold the leading line break.
 
                 var trailingBlank = analyzer.IsWhite();
 
-                // Check if we need to fold the leading line break.
-
-                if (!isLiteral && StartsWith(leadingBreak, '\n') && !leadingBlank && !trailingBlank)
-                {
-                    // Do we need to join the lines by space?
-
-                    if (trailingBreaks.Length == 0)
-                    {
-                        value.Append(' ');
-                    }
-
-                    leadingBreak.Length = 0;
-                }
-                else
-                {
-                    value.Append(leadingBreak);
-                    leadingBreak.Length = 0;
-                }
+                // Completely bypass folding to treat folded strings as literal text here.
+                // The folding rule is now deferred to the Representation model and Deserializer.
+                value.Append(leadingBreak);
+                leadingBreak.Length = 0;
 
                 // Append the remaining line breaks.
 

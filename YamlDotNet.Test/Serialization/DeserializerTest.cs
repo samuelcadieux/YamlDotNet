@@ -28,6 +28,7 @@ using System.Threading;
 using FluentAssertions;
 using Xunit;
 using YamlDotNet.Core;
+using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.Callbacks;
 using YamlDotNet.Serialization.NamingConventions;

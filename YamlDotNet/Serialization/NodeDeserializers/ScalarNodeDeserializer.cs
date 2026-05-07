@@ -26,7 +26,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Core.ObjectPool;
 using YamlDotNet.Helpers;
-using YamlDotNet.Serialization.NamingConventions;
+using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization.Utilities;
 
 namespace YamlDotNet.Serialization.NodeDeserializers
@@ -68,6 +68,10 @@ namespace YamlDotNet.Serialization.NodeDeserializers
                 return false;
             }
 
+            var scalarValue = scalar.Style == ScalarStyle.Folded && scalar.Value != null
+                ? YamlScalarNode.Fold(scalar.Value)
+                : scalar.Value;
+
             // Strip off the nullable & fsharp option type, if present
             var underlyingType = Nullable.GetUnderlyingType(expectedType)
                 ?? FsharpHelper.GetOptionUnderlyingType(expectedType)
@@ -75,7 +79,7 @@ namespace YamlDotNet.Serialization.NodeDeserializers
 
             if (underlyingType.IsEnum())
             {
-                var enumName = enumNamingConvention.Reverse(scalar.Value);
+                var enumName = enumNamingConvention.Reverse(scalarValue);
 
                 enumName = typeInspector.GetEnumName(underlyingType, enumName);
 
@@ -87,7 +91,7 @@ namespace YamlDotNet.Serialization.NodeDeserializers
             switch (typeCode)
             {
                 case TypeCode.Boolean:
-                    value = DeserializeBooleanHelper(scalar.Value);
+                    value = DeserializeBooleanHelper(scalarValue);
                     break;
 
                 case TypeCode.Byte:
@@ -98,33 +102,33 @@ namespace YamlDotNet.Serialization.NodeDeserializers
                 case TypeCode.UInt16:
                 case TypeCode.UInt32:
                 case TypeCode.UInt64:
-                    value = DeserializeIntegerHelper(typeCode, scalar.Value);
+                    value = DeserializeIntegerHelper(typeCode, scalarValue);
                     break;
 
                 case TypeCode.Single:
-                    value = float.Parse(scalar.Value, formatter.NumberFormat);
+                    value = float.Parse(scalarValue, formatter.NumberFormat);
                     break;
 
                 case TypeCode.Double:
-                    value = double.Parse(scalar.Value, formatter.NumberFormat);
+                    value = double.Parse(scalarValue, formatter.NumberFormat);
                     break;
 
                 case TypeCode.Decimal:
-                    value = decimal.Parse(scalar.Value, formatter.NumberFormat);
+                    value = decimal.Parse(scalarValue, formatter.NumberFormat);
                     break;
 
                 case TypeCode.String:
-                    value = scalar.Value;
+                    value = scalarValue;
                     break;
 
                 case TypeCode.Char:
-                    value = scalar.Value[0];
+                    value = scalarValue[0];
                     break;
 
                 case TypeCode.DateTime:
                     // DateTime.Parse with InvariantCulture handles standard YAML datetime values
                     // when the target type is explicitly DateTime.
-                    value = DateTime.Parse(scalar.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+                    value = DateTime.Parse(scalarValue, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
                     break;
 
                 default:
@@ -132,12 +136,12 @@ namespace YamlDotNet.Serialization.NodeDeserializers
                     {
                         if (!scalar.IsKey && attemptUnknownTypeDeserialization)
                         {
-                            value = AttemptUnknownTypeDeserialization(scalar);
+                            value = AttemptUnknownTypeDeserialization(scalar, scalarValue);
                         }
                         else
                         {
                             // Default to string
-                            value = scalar.Value;
+                            value = scalarValue;
                         }
                     }
                     else
@@ -152,7 +156,7 @@ namespace YamlDotNet.Serialization.NodeDeserializers
                         {
                             try
                             {
-                                value = parseMethod.Invoke(null, new object[] { scalar.Value, CultureInfo.InvariantCulture });
+                                value = parseMethod.Invoke(null, new object?[] { scalarValue, CultureInfo.InvariantCulture });
                             }
                             catch (System.Reflection.TargetInvocationException ex) when (ex.InnerException != null)
                             {
@@ -161,7 +165,7 @@ namespace YamlDotNet.Serialization.NodeDeserializers
                         }
                         else
                         {
-                            value = typeConverter.ChangeType(scalar.Value, expectedType, enumNamingConvention, typeInspector);
+                            value = typeConverter.ChangeType(scalarValue, expectedType, enumNamingConvention, typeInspector);
                         }
                     }
                     break;
@@ -361,15 +365,15 @@ namespace YamlDotNet.Serialization.NodeDeserializers
             }
         }
 
-        private object? AttemptUnknownTypeDeserialization(Scalar value)
+        private object? AttemptUnknownTypeDeserialization(Scalar value, string scalarValue)
         {
             if (value.Style == ScalarStyle.SingleQuoted ||
                 value.Style == ScalarStyle.DoubleQuoted ||
                 value.Style == ScalarStyle.Folded)
             {
-                return value.Value;
+                return scalarValue;
             }
-            var v = value.Value;
+            var v = scalarValue;
             object? result;
 
             switch (v)

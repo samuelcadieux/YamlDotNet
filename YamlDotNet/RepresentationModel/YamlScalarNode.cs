@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
@@ -46,7 +47,11 @@ namespace YamlDotNet.RepresentationModel
         /// <value>The value.</value>
         public string? Value
         {
-            get => value;
+            get
+            {
+                return value;
+            }
+
             set
             {
                 if (value == null)
@@ -190,6 +195,10 @@ namespace YamlDotNet.RepresentationModel
         /// <returns>The result of the conversion.</returns>
         public static explicit operator string?(YamlScalarNode value)
         {
+            if (value.Style == ScalarStyle.Folded && value.Value != null)
+            {
+                return Fold(value.Value);
+            }
             return value.Value;
         }
 
@@ -201,7 +210,53 @@ namespace YamlDotNet.RepresentationModel
         /// </returns>
         internal override string ToString(RecursionLevel level)
         {
+            if (Style == ScalarStyle.Folded && Value != null)
+            {
+                return Fold(Value);
+            }
             return Value ?? string.Empty;
+        }
+
+        internal static string Fold(string value)
+        {
+            if (string.IsNullOrEmpty(value)) { return string.Empty; }
+
+            using var result = new System.IO.StringWriter { NewLine = "\n" };
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (value[i] == '\r') { continue; }
+
+                if (value[i] == '\n')
+                {
+                    int newlineCount = 1;
+                    while (i + 1 < value.Length && (value[i + 1] == '\r' || value[i + 1] == '\n'))
+                    {
+                        if (value[i + 1] == '\n') { newlineCount++; }
+                        i++;
+                    }
+
+                    if (newlineCount == 1 && i < value.Length - 1)
+                    {
+                        // Single embedded newline -> space
+                        result.Write(' ');
+                    }
+                    else
+                    {
+                        // Multiple newlines reduce by 1. Terminal single newline stays 1.
+                        int keepCount = newlineCount == 1 ? 1 : newlineCount - 1;
+                        for (int j = 0; j < keepCount; j++)
+                        {
+                            result.Write('\n');
+                        }
+                    }
+                }
+                else
+                {
+                    result.Write(value[i]);
+                }
+            }
+            return result.ToString();
         }
 
         /// <summary>

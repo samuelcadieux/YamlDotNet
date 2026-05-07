@@ -1290,7 +1290,6 @@ namespace YamlDotNet.Core
         private void WriteFoldedScalar(string value)
         {
             var previousBreak = true;
-            var leadingSpaces = true;
 
             WriteIndicator(">", true, false, false);
             WriteBlockScalarHints(value);
@@ -1302,26 +1301,13 @@ namespace YamlDotNet.Core
             for (var i = 0; i < value.Length; ++i)
             {
                 var character = value[i];
+                if (character == '\r' && (i + 1) < value.Length && value[i + 1] == '\n')
+                {
+                    continue;
+                }
+
                 if (IsBreak(character, out var breakCharacter))
                 {
-                    if (character == '\r' && (i + 1) < value.Length && value[i + 1] == '\n')
-                    {
-                        continue;
-                    }
-
-                    if (!previousBreak && !leadingSpaces && breakCharacter == '\n')
-                    {
-                        var k = 0;
-                        while (i + k < value.Length && IsBreak(value[i + k], out _))
-                        {
-                            ++k;
-                        }
-                        if (i + k < value.Length && !(IsBlank(value[i + k]) || IsBreak(value[i + k], out _)))
-                        {
-                            WriteBreak();
-                        }
-                    }
-
                     WriteBreak(breakCharacter);
                     isIndentation = true;
                     previousBreak = true;
@@ -1331,16 +1317,8 @@ namespace YamlDotNet.Core
                     if (previousBreak)
                     {
                         WriteIndent();
-                        leadingSpaces = IsBlank(character);
                     }
-                    if (!previousBreak && character == ' ' && i + 1 < value.Length && value[i + 1] != ' ' && column > bestWidth)
-                    {
-                        WriteIndent();
-                    }
-                    else
-                    {
-                        Write(character);
-                    }
+                    Write(character);
                     isIndentation = false;
                     previousBreak = false;
                 }

@@ -2461,11 +2461,11 @@ Cycle: *o0");
         }
 
         [Fact]
-        public void RoundtripWindowsNewlines()
+        public void RoundtripLiteralWindowsNewlines()
         {
             var text = $"Line1{Environment.NewLine}Line2{Environment.NewLine}Line3{Environment.NewLine}{Environment.NewLine}Line4";
 
-            var sut = new SerializerBuilder().Build();
+            var sut = new SerializerBuilder().WithDefaultScalarStyle(ScalarStyle.Literal).Build();
             var dut = new DeserializerBuilder().Build();
 
             using var writer = new StringWriter { NewLine = Environment.NewLine };
@@ -2475,6 +2475,24 @@ Cycle: *o0");
             using var reader = new StringReader(serialized);
             var roundtrippedText = dut.Deserialize<StringContainer>(reader).Text.NormalizeNewLines();
             Assert.Equal(text, roundtrippedText);
+        }
+
+        [Fact]
+        public void RoundtripFoldedWindowsNewlines()
+        {
+            var text = $"Line1{Environment.NewLine}Line2{Environment.NewLine}Line3{Environment.NewLine}{Environment.NewLine}Line4";
+            var expected = $"Line1 Line2 Line3{Environment.NewLine}Line4";
+
+            var sut = new SerializerBuilder().WithDefaultScalarStyle(ScalarStyle.Folded).Build();
+            var dut = new DeserializerBuilder().Build();
+
+            using var writer = new StringWriter { NewLine = Environment.NewLine };
+            sut.Serialize(writer, new StringContainer { Text = text });
+            var serialized = writer.ToString();
+
+            using var reader = new StringReader(serialized);
+            var roundtrippedText = dut.Deserialize<StringContainer>(reader).Text.NormalizeNewLines();
+            Assert.Equal(expected, roundtrippedText);
         }
 
         [Theory]
